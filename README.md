@@ -1,25 +1,25 @@
-# Srimad Bhagwad Gita Chatbot (Offline, Local RAG)
+# Srimad Bhagwad Gita Chatbot (Local Retrieval + Groq LLM)
 
 ## What This Project Is
-This project is a local Retrieval-Augmented Generation (RAG) chatbot for the Bhagavad Gita.
+This project is a Retrieval-Augmented Generation (RAG) chatbot for the Bhagavad Gita.
 
 It:
 - reads a PDF,
 - splits it into chunks,
 - creates local vector embeddings (no paid API),
 - stores vectors in `local-index.json`,
-- and answers questions in the terminal by retrieving relevant chunks.
+- retrieves relevant chunks locally and generates final answers with Groq LLM.
 
-The system is designed to run fully offline for indexing and retrieval logic.
+Indexing and retrieval are local. Final answer generation uses Groq API.
 
 ## Core Idea
-Instead of sending your data to external LLM/vector services, this project builds and uses a local index:
+This project builds a local index first, then uses it as context for Groq:
 
 1. `rag.ts` triggers indexing.
 2. `prepare.ts` builds vectors and writes a local JSON index.
-3. `chat.ts` loads the index, retrieves top matches, and produces an answer.
+3. `chat.ts` loads the index, retrieves top matches, and sends context to Groq for answer generation.
 
-This gives a low-cost, private-first chatbot workflow suitable for experimentation and interview demos.
+This gives a low-cost RAG workflow suitable for experimentation and interview demos.
 
 ## Architecture
 
@@ -49,12 +49,13 @@ Record shape:
 - Retrieves top chunks using hybrid ranking:
   - semantic similarity (cosine on vectors),
   - lexical relevance (token overlap + IDF-style weighting).
-- Synthesizes an extractive answer from best-ranked sentences.
+- Sends top retrieved chunks to Groq (`llama-3.3-70b-versatile`) to generate the final answer.
+- Falls back to local extractive answering if Groq call fails.
 - Runs in an interactive terminal loop (`exit`/`quit` to stop).
 
 ## Project Flow
 ```text
-PDF -> Chunking -> Local Embedding -> local-index.json -> Retrieval -> Terminal Answer
+PDF -> Chunking -> Local Embedding -> local-index.json -> Local Retrieval -> Groq Answer
 ```
 
 ## How To Run Locally
@@ -71,7 +72,13 @@ const filePath = "./Srimad Bhagwad Gita.pdf";
 ```
 Change to any local PDF path you want to index.
 
-## 3. Generate vectors (build local index)
+## 3. Add environment variable
+Create/update `.env`:
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+## 4. Generate vectors (build local index)
 ```bash
 bun run rag.ts
 ```
@@ -80,7 +87,7 @@ Expected output:
 Indexed <N> chunks to local store: .../local-index.json
 ```
 
-## 4. Start chatbot
+## 5. Start chatbot
 ```bash
 bun run chat.ts
 ```
@@ -97,12 +104,12 @@ exit
 ## File Structure
 - `prepare.ts`: indexing pipeline (PDF -> chunks -> vectors -> JSON).
 - `rag.ts`: indexing runner.
-- `chat.ts`: interactive local chatbot.
+- `chat.ts`: interactive chatbot (local retrieval + Groq generation).
 - `local-index.json`: generated vector store.
 
 ## Notes and Limitations
-- This is an offline retrieval-first chatbot, not a generative cloud LLM.
-- Answer quality depends on chunking and the local embedding strategy.
+- Retrieval is local; answer generation requires internet access to Groq API.
+- Answer quality depends on chunking, local embeddings, retrieval ranking, and Groq model output.
 - `local-index.json` can be large for big PDFs.
 - If document content changes, re-run `bun run rag.ts`.
 
