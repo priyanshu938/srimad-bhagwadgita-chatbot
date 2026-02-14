@@ -93,7 +93,7 @@ bun run chat.ts
 ```
 Then ask questions in terminal:
 ```text
-> what does krishna say about duty?
+> what does Lord Krishna say about duty?
 ```
 
 Exit with:
